@@ -6,10 +6,10 @@
 ## This script takes in three arguments the name of your instance, the region, and the number of snapshots to keep.
 
 NameOfYourInstance=$1
-NameOfYourBackup=$NameOfYourInstance
+NameOfYourBackup="autosnap-${NameOfYourInstance}-$(date +%Y-%m-%d_%H.%M)"
 Region=$2
 
-aws lightsail create-instance-snapshot --instance-snapshot-name ${NameOfYourBackup}-$(date +%Y-%m-%d_%H.%M) --instance-name $NameOfYourInstance --region $Region
+aws lightsail create-instance-snapshot --instance-snapshot-name ${NameOfYourBackup} --instance-name $NameOfYourInstance --region $Region
 
 ## Delay before initiating clean up of old snapshots
 sleep 30
@@ -21,12 +21,8 @@ sleep 30
 snapshotsToKeep=$3
 echo "Number of Instance Snapshots to keep: ${snapshotsToKeep}"
 
-# get the total number of available Lightsail snapshots
-numberOfSnapshots=$(aws lightsail get-instance-snapshots | jq '[.[]  | select(.[].fromInstanceName == "'${NameOfYourInstance}'") ]| length')
-echo "Number of instance snapshots: ${numberOfSnapshots}"
-
-# get the names of all snapshots sorted from old to new
-SnapshotNames=$(aws lightsail get-instance-snapshots | jq '.[] | sort_by(.createdAt) | map(select(.fromInstanceName == "'${NameOfYourInstance}'")) | .[].name')
+SnapshotNames=$(aws lightsail get-instance-snapshots | jq '.instanceSnapshots | map(select(.name|startswith("'autosnap-${instance_name}'"))) | .[].name')
+numberOfSnapshots=$(echo "$SnapshotNames" | wc -l)
 
 # loop through all snapshots
 while IFS= read -r line 
